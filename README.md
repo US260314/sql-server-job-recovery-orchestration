@@ -1,200 +1,235 @@
 ## 📌 Overview
 
-This project implements a controlled, auditable, and prioritized SQL Agent job recovery framework designed for enterprise Power BI Report Server environments hosted on-premises.
+This repository implements an **enterprise-grade SQL Server Agent job recovery orchestration framework** designed for **Power BI Report Server environments running on SQL Server**.
 
-The solution addresses a critical operational gap where scheduled SQL Agent jobs are missed during server maintenance windows (patching/reboots), potentially leading to missed report refreshes, delayed executive reporting, and downstream data inconsistencies.
+In many enterprise reporting platforms, scheduled report refresh jobs are tied to **SQL Server Agent jobs**. During **planned maintenance windows (patching, server reboot, service restarts)**, scheduled executions may be skipped, resulting in missed report refreshes and potential reporting gaps.
 
-Instead of relying on manual job restarts, this framework introduces a structured, configurable, and batch-controlled recovery mechanism.
+This framework introduces a **controlled, auditable, and prioritized recovery mechanism** that automatically detects missed job executions and safely replays them in a **batch-controlled, resource-aware manner**.
 
----
-
-## 🎯 Problem Statement
-
-In enterprise Power BI Report Server environments:
-
-* Each deployed report creates a corresponding SQL Agent job.
-* Users define refresh schedules, email delivery, exports, and data refresh timing.
-* Monthly patching requires SQL services to be stopped temporarily.
-* During maintenance windows:
-
-  * Scheduled jobs are skipped.
-  * Execution windows are missed.
-  * Manual intervention is required.
-  * There is risk of missing critical reports.
-  * Bulk re-execution may overload backend systems.
-
-This creates:
-
-* Operational risk
-* Manual effort
-* Business impact
-* Potential performance bottlenecks
+The solution was designed and implemented to **eliminate manual job recovery processes and improve operational reliability for enterprise reporting systems**.
 
 ---
 
-## 🏗️ Solution Architecture
+# 🎯 Problem Statement
 
-A stored procedure-driven orchestration framework was developed to:
+In large **Power BI Report Server environments**:
 
-### 1️⃣ Detect Missed Job Windows
+* Each report deployment generates a **corresponding SQL Server Agent job**
+* These jobs control:
 
-* Capture SQL Server service stop time
-* Capture SQL Server service start time
-* Identify jobs whose schedules fall within this window
-* Generate candidate recovery list
+  * Report refresh schedules
+  * Email subscriptions
+  * Data exports
+  * Data refresh pipelines
 
----
+During **monthly patching cycles or infrastructure maintenance**:
 
-### 2️⃣ Controlled Execution Mode
+* SQL Server services are temporarily stopped
+* Scheduled job execution windows are missed
+* Critical report refreshes fail to run
+* Manual DBA intervention becomes necessary
 
-Supports dual-mode execution:
+Common risks include:
 
-| Mode              | Behavior                           |
-| ----------------- | ---------------------------------- |
-| `@to_execute = 0` | Dry run – lists affected jobs only |
-| `@to_execute = 1` | Executes missed jobs               |
+* Missed executive reporting
+* Delayed dashboards
+* Inconsistent downstream data
+* Operational overhead for DBAs
+* Potential system overload when manually replaying jobs
 
-This enables:
-
-* Safe validation in testing
-* Controlled production release
-* Zero-risk preview mode
-
----
-
-### 3️⃣ Batch-Based Execution Control
-
-To prevent system overload:
-
-* Jobs are executed in configurable batch sizes
-* Next batch starts only after previous batch completes
-* Prevents backend resource saturation
-* Avoids performance bottlenecks
+This creates both **operational risk and business impact**.
 
 ---
 
-### 4️⃣ Priority-Based Release
+# 🏗️ Solution Architecture
 
-Not all reports are equal.
+A **stored-procedure driven orchestration framework** was implemented to intelligently detect and recover missed job executions.
 
-The framework supports:
-
-* Classification-based execution
-* Critical reports first
-* Executive dashboards prioritized
-* Non-critical reports deferred
-
-This aligns execution order with business value.
+The framework operates through the following phases:
 
 ---
 
-### 5️⃣ Audit Logging
+## 1️⃣ Missed Job Window Detection
 
-Each invocation records:
+The system automatically identifies jobs whose scheduled execution window occurred during the SQL Server downtime.
+
+Detection logic:
+
+* Capture **SQL Server service stop timestamp**
+* Capture **SQL Server service restart timestamp**
+* Evaluate job schedules during the outage window
+* Generate a **candidate recovery list**
+
+This ensures only relevant jobs are replayed.
+
+---
+
+## 2️⃣ Safe Execution Modes
+
+The framework supports **dual execution modes** to ensure safe operational rollout.
+
+| Mode              | Description                                          |
+| ----------------- | ---------------------------------------------------- |
+| `@to_execute = 0` | Dry-run mode – lists impacted jobs without executing |
+| `@to_execute = 1` | Live execution mode – executes missed jobs           |
+
+This allows:
+
+* Risk-free validation
+* Controlled testing
+* Safe production deployments
+
+---
+
+## 3️⃣ Batch-Based Recovery Execution
+
+To prevent system overload, jobs are executed in **configurable batches**.
+
+Key behavior:
+
+* Jobs are grouped into execution batches
+* Next batch starts only after the previous batch completes
+* Prevents excessive backend resource consumption
+* Protects database and ETL infrastructure
+
+This ensures **controlled workload replay instead of uncontrolled spikes**.
+
+---
+
+## 4️⃣ Priority-Based Job Recovery
+
+Not all reports have equal business importance.
+
+The framework supports **priority-based execution**, allowing critical reports to run first.
+
+Examples:
+
+* Executive dashboards
+* Regulatory reports
+* Operational monitoring reports
+
+Lower priority reports are replayed afterward.
+
+This aligns system behavior with **business reporting priorities**.
+
+---
+
+## 5️⃣ Comprehensive Audit Logging
+
+Every execution is recorded for operational transparency.
+
+Captured metadata includes:
 
 * Job name
-* Execution time
-* Status (Success/Failure)
 * Execution batch
-* Timestamp
-* Execution mode (Dry-run/Live)
+* Execution timestamp
+* Execution status (Success / Failure)
+* Execution mode (Dry-Run / Live)
+* Recovery invocation ID
 
-Provides:
+Benefits:
 
-* Traceability
-* Compliance evidence
-* Operational transparency
-* Historical review capability
+* Operational traceability
+* Audit compliance
+* Incident review capability
+* Historical analysis
 
 ---
 
-## 🧠 Design Principles
+# 🧠 Design Principles
 
 ### Reliability First
 
-Designed to prevent missed executive reporting and operational blind spots.
+Ensures that **critical enterprise reports are never permanently missed due to maintenance operations**.
 
 ---
 
 ### Controlled Resource Management
 
-Batch processing prevents load spikes and protects backend systems.
+Batch-controlled execution prevents load spikes and protects backend systems.
 
 ---
 
 ### Safety by Design
 
-Dry-run mode ensures risk-free validation before execution.
+Dry-run mode ensures **zero-risk validation before production execution**.
 
 ---
 
 ### Business-Aware Execution
 
-Priority-based execution aligns with critical reporting requirements.
+Priority-based recovery aligns execution with **organizational reporting importance**.
 
 ---
 
-### Operational Maturity
+### Operational Automation
 
-Transforms reactive manual intervention into deterministic automation.
-
----
-
-## 💼 Business Impact
-
-This framework:
-
-* Eliminated manual post-patching job recovery
-* Reduced operational risk
-* Improved reporting reliability
-* Prevented performance bottlenecks
-* Increased DBA productivity
-* Ensured SLA compliance for executive reporting
+Transforms a **manual DBA recovery process into deterministic automation**.
 
 ---
 
-## 📈 Design Maturity Level
+# 💼 Operational Impact
 
-| Level                            | Capability |
-| -------------------------------- | ---------- |
-| Manual restart of jobs           | ❌          |
-| Scripted bulk execution          | ❌          |
-| Intelligent missed-job detection | ✅          |
-| Controlled batch replay          | ✅          |
-| Priority-based release           | ✅          |
-| Auditable execution logging      | ✅          |
-| Safe dry-run testing mode        | ✅          |
+After implementation, this framework:
 
-This represents enterprise-grade operational automation.
+* Eliminated manual SQL Agent job recovery after patching
+* Reduced DBA operational effort
+* Improved reliability of enterprise reporting
+* Prevented resource spikes caused by bulk job restarts
+* Improved SLA compliance for executive reporting
 
 ---
 
-## 🔒 Safety & Governance
+# 📈 Operational Maturity Model
 
-* No modification to existing job schedules
-* No schedule override
-* Non-invasive recovery logic
+| Capability                  | Traditional Approach | This Framework |
+| --------------------------- | -------------------- | -------------- |
+| Manual job restart          | ✔                    | ❌              |
+| Scripted bulk restart       | ✔                    | ❌              |
+| Missed job detection        | ❌                    | ✔              |
+| Batch-controlled recovery   | ❌                    | ✔              |
+| Priority-aware execution    | ❌                    | ✔              |
+| Auditable execution logging | ❌                    | ✔              |
+| Safe dry-run validation     | ❌                    | ✔              |
+
+This represents **enterprise-grade operational automation for SQL Server environments**.
+
+---
+
+# 🔒 Safety & Governance
+
+The framework was designed to be **non-invasive and operationally safe**:
+
+* Does **not modify existing job schedules**
+* No changes to SQL Agent configuration
+* Executes only missed jobs
 * Fully auditable execution trail
 
 ---
 
-## 🚀 Extensibility
+# 🚀 Future Enhancements
 
-The framework can be extended to support:
+Potential extensions include:
 
 * Cross-server job recovery
-* Distributed SQL instances
+* Multi-instance orchestration
 * Automated post-patch triggers
 * Email summary reporting
-* Centralized operational dashboard
+* Centralized monitoring dashboard
 
 ---
 
-## 👤 Author
+# 👤 Author
 
-Syamprasad Agiripalli
+**Syamprasad Agiripalli**
 Principal Cloud Data & Reliability Engineer
-Database Reliability | Automation | Operational Engineering
 
+Specializing in:
 
+* Database Reliability Engineering
+* Cloud Database Platforms
+* Operational Automation
+* Enterprise Data Infrastructure
+
+---
 
